@@ -3,3 +3,5 @@
 .settings
 eclipse
 *.pyc
+tmp
+test-result

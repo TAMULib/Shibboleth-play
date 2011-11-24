@@ -1,4 +1,4 @@
-package controllers.Shibboleth;
+package controllers.shib;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -10,6 +10,7 @@ import org.junit.internal.runners.statements.Fail;
 
 import play.Logger;
 import play.Play;
+import play.Play.Mode;
 import play.data.validation.Required;
 import play.libs.Crypto;
 import play.mvc.Before;
@@ -27,9 +28,11 @@ import play.utils.Java;
  *
  */
 public class Shibboleth extends Controller {
-
+	
+	
 	@Before(unless={"login", "authenticate", "logout"})
 	static void checkAccess() throws Throwable {
+		
 		// Redirect to login
 		if(!session.contains("username")) {
 			login();
@@ -54,11 +57,13 @@ public class Shibboleth extends Controller {
 	 * Initiate a shibboleth login.
 	 */
 	public static void login() throws Throwable {
-
+		
 		// Determine where the Shibboleth Login initiator is
 		String shibLogin = Play.configuration.getProperty("shib.login.url",null);
 		if (shibLogin == null)
 			shibLogin = request.getBase() + "/Shibboleth.sso/Login";
+		if (isMock())
+			shibLogin = Router.reverse("shib.Shibboleth.authenticate").url;
 		
 		// Append the target query string
 		shibLogin += "?target="+request.getBase();
@@ -92,7 +97,13 @@ public class Shibboleth extends Controller {
 		for (String attribute : attributeMap.keySet()) {
 			
 			String headerName = attributeMap.get(attribute);
-			Header headers = request.headers.get(headerName);
+			Header headers = null;
+			if ( isMock() ) 
+				// Get the fake headers
+				headers = MockShibboleth.get(headerName);
+			else
+				// Use the real headers
+				headers = request.headers.get(headerName);
 			
 			if (headers == null) {
 				Logger.warn("Shib: Did not find header '"+headerName+"' for attribute '"+attribute+"'.");
@@ -128,7 +139,7 @@ public class Shibboleth extends Controller {
 		Security.invoke("onDisconnect");
 		session.clear();
 		Security.invoke("onDisconnected");
-		
+				
 		String useLogout = Play.configuration.getProperty("shib.logout","false"); 
 		if ( useLogout.equalsIgnoreCase("true")) {
 			// Determine where the Shibboleth logout initiator is
@@ -154,11 +165,19 @@ public class Shibboleth extends Controller {
 		redirect(shibReturn);
 	}
 
+	private static boolean isMock() {
+		if (Play.mode == Mode.DEV && 
+			"mock".equalsIgnoreCase(Play.configuration.getProperty("shib")) )
+			return true;
+		else
+			return false;
+	}
+	
 
 	/**
 	 * Redirect to the original user's email
 	 */
-	static void redirectToOriginalURL() throws Throwable {
+	private static void redirectToOriginalURL() throws Throwable {
 		Security.invoke("onAuthenticated");
 		String url = flash.get("url");
 		if(url == null) {
@@ -178,8 +197,8 @@ public class Shibboleth extends Controller {
 		for (Object keyObj : keys) {
 			if (keyObj instanceof String) {
 				String key = (String) keyObj;
-				if (key.startsWith("shib.attribute")) {
-					String attribute = key.substring("shib.attribute".length());
+				if (key.startsWith("shib.attribute.")) {
+					String attribute = key.substring("shib.attribute.".length());
 					String header = Play.configuration.getProperty(key);
 					
 					attributeMap.put(attribute, header);

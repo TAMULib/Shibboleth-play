@@ -1,4 +1,4 @@
-package controllers.Shibboleth;
+package controllers.shib;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -1,4 +1,4 @@
-package controllers.Shibboleth;
+package controllers.shib;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;

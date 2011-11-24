@@ -1,4 +1,24 @@
 #{extends 'main.html' /}
 #{set title:'Home' /}
 
-#{welcome /}
+<h1>Sample Shibboleth Sample Application</h1>
+
+<p> Shibboleth bla....</p>
+
+#{if session.get("username")}
+	<p class="button"><a href="@{ shib.Shibboleth.logout() }">Logout</a></p>
+#{/if}
+#{else}
+	<p class="button"><a href="@{ shib.Shibboleth.login() }">Login</a></p>
+#{/else}
+
+<h2>Session Attributes</h2>
+<dl>
+	#{list items:session.all().keySet(), as:'key'}
+		<dt>${key}</dt>
+		<dd>${session.get(key)}</dd>
+	#{/list}
+	#{else}
+		<p>No session attributes defined</p>
+	#{/else}
+</dl>
