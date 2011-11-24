@@ -1,6 +1,8 @@
 package controllers.shib;
 
 import java.lang.reflect.InvocationTargetException;
+import java.net.URLEncoder;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,8 @@ public class Shibboleth extends Controller {
 	static void checkAccess() throws Throwable {
 		
 		// Redirect to login
-		if(!session.contains("username")) {
+		if(!session.contains("shibboleth")) {
+			flash.put("url", "GET".equals(request.method) ? request.url : null); 
 			login();
 		}
 
@@ -69,6 +72,15 @@ public class Shibboleth extends Controller {
 		shibLogin += "?target="+request.getBase();
 		shibLogin += Router.reverse("Shibboleth.authenticate").url;
 		
+		// Since we are redirecting we can't actually set the flash, so we'll
+		// embed it in the target url.
+		if (flash.get("url") != null)
+			if (isMock())
+				shibLogin += "&return="+URLEncoder.encode(flash.get("url"));
+			else
+				shibLogin += URLEncoder.encode("?return="+flash.get("url"));
+		
+		
 		Logger.debug("Shib: Redirecting to Shibboleth login initiator: "+shibLogin);
 		
 		redirect(shibLogin);
@@ -91,6 +103,7 @@ public class Shibboleth extends Controller {
 		}
 		
 		// TODO: Add check for special HTTP parameter from shibboleth for all connections
+		session.put("shibboleth",String.valueOf(new Date().getTime()));
 		
 		// 2. Map each header to a session attribute
 		Map<String,String> attributeMap = getAttributeMap();
@@ -112,7 +125,6 @@ public class Shibboleth extends Controller {
 			
 			if (headers.values.size() > 1) {
 				Logger.warn("Shib: Recieved multiple '"+headerName+"' headers for attribute '"+attribute+"', picking the first one.");
-				continue;
 			}
 			
 			String value = headers.value();
@@ -180,9 +192,11 @@ public class Shibboleth extends Controller {
 	private static void redirectToOriginalURL() throws Throwable {
 		Security.invoke("onAuthenticated");
 		String url = flash.get("url");
-		if(url == null) {
+		if(url == null) 
+			url = request.params.get("return");
+		if(url == null)
 			url = "/";
-		}
+		
 		redirect(url);
 	}
 	
