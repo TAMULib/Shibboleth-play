@@ -19,16 +19,10 @@ public class Security extends Controller {
 	 * @return true if you are allowed to execute this controller method.
 	 */
 	static boolean check(String profile) {
-		return true;
-	}
-
-	/**
-	 * This method returns the current connected username
-	 * 
-	 * @return
-	 */
-	static String connected() {
-		return session.get("shibboleth");
+		if (isConnected())
+			return true;
+		else
+			return false;
 	}
 
 	/**
