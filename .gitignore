@@ -2,6 +2,7 @@
 .project
 .settings
 eclipse
-*.pyc
 tmp
 test-result
+*.pyc
+*.class
