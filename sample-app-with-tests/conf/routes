@@ -6,6 +6,7 @@
 
 # Home page
 GET     /                                       Application.index
+GET     /restricted                             Administrative.restricted
 
 # Ignore favicon requests
 GET     /favicon.ico                            404

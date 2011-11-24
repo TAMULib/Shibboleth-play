@@ -5,7 +5,7 @@
 
 <p> Shibboleth bla....</p>
 
-#{if session.get("username")}
+#{if session.contains("shibboleth")}
 	<p class="button"><a href="@{ shib.Shibboleth.logout() }">Logout</a></p>
 #{/if}
 #{else}
