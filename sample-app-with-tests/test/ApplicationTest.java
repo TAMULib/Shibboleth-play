@@ -74,7 +74,7 @@ public class ApplicationTest extends FunctionalTest {
      * Only some attributes are received, but not the full expected payload.
      */
     @Test
-    public void testJustEmail() {
+    public void testMinimumAttributes() {
     	
     	MockShibboleth.removeAll();
     	MockShibboleth.set("SHIB_email","someone@your-domain.net");
@@ -111,6 +111,25 @@ public class ApplicationTest extends FunctionalTest {
         assertContentMatch("<dt>lastName</dt>[\\s]*<dd>Smith</dd>", response);
     }
     
+    
+    
+    public void testLogout() {
+    	
+    	MockShibboleth.removeAll();
+    	MockShibboleth.set("SHIB_email","someone@your-domain.net");
+    	MockShibboleth.set("SHIB_givenName", "Some");
+    	MockShibboleth.set("SHIB_sn", "One");
+    	
+    	final String LOGIN_URL = Router.reverse("shib.Shibboleth.login").url;
+        Response response = GET(LOGIN_URL,true);
+        assertIsOk(response);
+        assertTrue(response.cookies.get("PLAY_SESSION").value.contains("someone@your-domain.net"));
+        
+        final String LOGOUT_URL = Router.reverse("shib.Shibboleth.logout").url;
+        response = GET(LOGOUT_URL,true);
+        assertIsOk(response);
+		assertFalse(response.cookies.get("PLAY_SESSION").value.contains("someone@your-domain.net"));
+    }
     
     
     @AfterClass
