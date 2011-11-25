@@ -1,0 +1,139 @@
+h1. Shibboleth authentication module
+
+The Shibboleth module provides integration with the "Shibboleth authentication protocol":http://shibboleth.internet2.edu/. The Shibboleth protocol is a distributed single sign on service across multiple organizational boundaries popular in higher education. The protocol is divided into three components: Service Provider (SP), Identity Provider (IDP), and Discovery Service (DS/WAYF). This module facilitates your Play! application becomes a Service Provider. 
+
+p(note). **Requirements**
+In order to use the shibboleth module you **must** proxy your Play! application behind a Shibboleth capable web server such as "Apache":https://wiki.shibboleth.net/confluence/display/SHIB2/NativeSPApacheConfig, "Lighttpd":https://wiki.shibboleth.net/confluence/display/SHIB2/NativeSPFastCGIConfig, or "IIS":https://wiki.shibboleth.net/confluence/display/SHIB2/NativeSPIISConfig. Install and configure Shibboleth on the proxy web server, then enable this module as described below.
+
+This module offers a "_lazy session_" (sometimes refereed to as "_passive session_") model. Under this model the shibbolized proxy will *not* need to restrict access to any particular URLs. Instead when a user selects to login, _or your applications forces the user to login_, then the module will direct the user to the appropriate Shibboleth initiator. This will cause the user to authenticate with their IDP and returned back to your SP. After returning this module will intercept the Shibboleth provided attributes about the user and make them available to your application. The specific attributes available to your application will depend on the attribute release policy for the IDP/SP.
+
+h2. <a>Enable the Shibboleth module for the application</a>
+
+In the @/conf/dependencies.yml@ file, enable the this module by adding a line after @require:@
+
+bc. 
+  require:
+    - play -> shibboleth
+
+h2. <a>Import Shibboleth routes</a>
+
+In the @conf/routes@ file, import the default module routes by adding the line shown below. You may also define your own routes if you wish, Shibboleth requires a login, logout, and authentication route.
+
+bc. 
+  #Import Shibboleth routes
+  *      /                module:shibboleth
+
+h2. <a>Configure Shibboleth authentication</a>
+
+Shibboleth requires some configuration before it can be used at a practical minimum you must provide some @shib.attribute.<Attribute Name> = <HTTP Header>@ attribute mappings. These map the Shibboleth attributes to session attributes that will be available to your application. You can use the @shib.require@ parameter to indicate which of these attributes are required for successful authentication. You can also override the @onAuthenticated()@ hook described below to implement more complex attribute mapping strategies.
+
+bc. 
+  # Shibboleth attributes
+  shib.require = email, firstName, lastName
+  
+  shib.attribute.email = SHIB-email
+  shib.attribute.firstName = SHIB-givenName
+  shib.attribute.lastName = SHIB_sn
+  ...
+  shib.attribute.<Attribute Name> = <HTTP Header>
+
+Beyond the attributes you may also configure the specific initiators configured for starting the login / logout process. The values used below are the default initiators. You may use fully qualified urls (i.e. @http://@) or absolute urls (just @/@). However if you want the Shibboleth transaction to occur over SSL it's best to set the protocol to https://. There is debate about whether it is positive to even provide a logout function for Shibbilized applications, because users may not necessarily be logged out of any other applications that they may have previously logged in. By default the module disables the logout feature, however you may enable it by specifying @shib.logout = true@
+
+bc. 
+  # The Shibboleth login initiator
+  shib.login.url = https://localhost/Shibboleth.sso/Login
+  
+  # Enable logout for shibboleth (default false)
+  shib.logout = true
+  shib.logout.url = https://localhost/Shibboleth.sso/Logout
+  shib.logout.return = https://localhost/
+
+h2. <a>Using Shibboleth in your application</a>
+
+The Shibboleth module works in a very similar manner to the default @Security@ module. To protect a controller requiring authentication use the @\@With@ annotation. For example:
+
+bc. @With(Security.class)
+  public class Application extends Controller {
+  
+      public static void index() {
+          render();
+      }
+  } 
+
+In addition to using the @controller.shib.Secure@ for restricting access to particular controllers you can also use it to customize how Shibboleth interacts with your application. Create a controller that extends the Shibboleth Secure class. When you do this you can add specific customization checks, for example:
+
+bc. 
+  @With(Security.class)
+  public class Application extends Controller {
+      ...
+      
+      @Check("isAdmin")
+      public static void modify() {
+          render();
+      }
+  }
+
+By default the @Check@ annotation will always authorize all checks. You will need to customize the behavior by creating a controller in your application which extends Shibboleth's Security class.
+
+bc. 
+  package controllers;
+  
+  public class Security extends controller.shib.Security {
+      ...
+    
+      static boolean check(String profile) {
+          User user = User.find("byEmail", session.get("email")).first();
+          if ("isAdmin".equals(profile)) {
+              return user.admin;
+          } else {
+              return false;
+          }
+      }
+  }
+
+Other methods that can be customized are: 
+
+* *onAuthenticated()* - This hook is called just after a user has successfully authenticated. Use the hook to further process the attributes received or implement complex attribute strategies. If you want to cancel the authentication call the @onAttributeFailure()@ hook directly. 
+* *onDisconnect()* - This hook is called just before a user is about to logout. The session still holds all the identifying information about the user. 
+* *onDisconnected()* - This hook is called just after a user has logged out and the session has been cleared.
+* *onCheckFailed()* - This hook is called when a user has failed a @Check@ annotation check for a particular profile.
+* *onAttributeFailure()* - This hook is called when a user has failed to supply the minimum configuration of attributes.
+
+
+h2. <a>Testing with Shibboleth</a>
+
+Using a fully functional Shibboleth implementation for testing is often times impractical. This module allows you to mock shibboleth attributes so that in a testing environment you do not need to setup a Shibbolized proxy webserver. First turn on the mock implementation with @shib = mock@ then provide a set of attributes to use when mocking Shibboleth: @shib.mock.<HTTP Header> = <Header Value>@. When any user attempts to login to your application with the Shibboleth mock turned on instead of using Shibboleth these attributes provided here will be assumed. 
+
+bc. 
+  %test.shib = mock
+  %test.shib.mock.SHIB_email = someone@your-domain.net
+  %test.shib.mock.SHIB_givenName = Bob
+  %test.shib.mock.SHIB_sn = Smith
+  ...
+  %test.shib.mock.<HTTP Header> = <Header Value>
+
+When developing functional application tests it is often usefull to authenticate as different users for individual test cases. The method described above does not allow this, however you can override these settings for a particular test case by using the @MockShibboleth@ class directly. For example:
+
+bc. 
+  @Test
+  public void testShibbolethAuthentication() {
+  
+      MockShibboleth.removeAll();
+      MockShibboleth.set("SHIB_email","someoneelse@your-domain.net");
+      MockShibboleth.set("SHIB_givenName", "Some");
+      MockShibboleth.set("SHIB_sn", "One");
+      
+      final String LOGIN_URL = Router.reverse("shib.Shibboleth.login").url;
+      Response response = GET(LOGIN_URL,true);
+      assertIsOk(response);
+      assertTrue(response.cookies.get("PLAY_SESSION").value
+          .contains("someoneelse@your-domain.net"));
+  }
+  
+  @AfterClass
+  public static void cleanup() {
+      MockShibboleth.reload();
+  }
+
+More examples are provided in the "Sample Shibboleth Application":https://github.com/TAMULib/Shibboleth-play/tree/master/sample-app-with-tests provided with the module.
+ 
