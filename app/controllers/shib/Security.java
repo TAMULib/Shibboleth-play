@@ -1,7 +1,10 @@
 package controllers.shib;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import play.Play;
 import play.mvc.*;
 import play.data.validation.*;
@@ -66,6 +69,15 @@ public class Security extends Controller {
 	 */
 	static void onCheckFailed(String profile) {
 		forbidden();
+	}
+	
+	/**
+	 * When an error is encountered extracting shibboleth attributes. 
+	 * 
+	 * @param attributes Map of attributes found
+	 */
+	static void onAttributeFailure(HashMap<String,String> attributes) {
+		error("Authentication Failure");
 	}
 
 	protected static Object invoke(String m, Object... args) throws Throwable {

@@ -2,6 +2,8 @@ package controllers.shib;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -102,11 +104,9 @@ public class Shibboleth extends Controller {
 			Logger.debug(log);
 		}
 		
-		// TODO: Add check for special HTTP parameter from shibboleth for all connections
-		session.put("shibboleth",String.valueOf(new Date().getTime()));
-		
 		// 2. Map each header to a session attribute
 		Map<String,String> attributeMap = getAttributeMap();
+		Map<String,String> extractedAttributes = new HashMap<String,String>();
 		for (String attribute : attributeMap.keySet()) {
 			
 			String headerName = attributeMap.get(attribute);
@@ -119,7 +119,7 @@ public class Shibboleth extends Controller {
 				headers = request.headers.get(headerName);
 			
 			if (headers == null) {
-				Logger.warn("Shib: Did not find header '"+headerName+"' for attribute '"+attribute+"'.");
+				Logger.debug("Shib: Did not find header '"+headerName+"' for attribute '"+attribute+"'.");
 				continue;
 			}
 			
@@ -135,11 +135,25 @@ public class Shibboleth extends Controller {
 			}
 			
 			// Store on the session.
-			session.put(attribute, value);
+			extractedAttributes.put(attribute, value);
 			Logger.debug("Shib: Recieved attribute, '"+attribute+"' = '"+value+"'");
 		}
 		
-		// Redirect to the original URL
+		// 3. Check for the required attributes
+		for(String required : getRequiredAttributes()) {
+			if (!extractedAttributes.containsKey(required))  {
+				Security.invoke("onAttributeFailure", extractedAttributes);	
+			}
+		}
+		
+		// 4. Log the user in
+		session.put("shibboleth",String.valueOf(new Date().getTime()));
+		for(String attribute : extractedAttributes.keySet()) {
+			session.put(attribute,extractedAttributes.get(attribute));
+		}
+		Security.invoke("onAuthenticated");
+		
+		// 5. Redirect to the original URL
 		redirectToOriginalURL();
 	}
 
@@ -177,6 +191,9 @@ public class Shibboleth extends Controller {
 		redirect(shibReturn);
 	}
 
+	/**
+	 * @return Is Shibboleth being Mocked for testing?
+	 */
 	private static boolean isMock() {
 		if (Play.mode == Mode.DEV && 
 			"mock".equalsIgnoreCase(Play.configuration.getProperty("shib")) )
@@ -190,7 +207,6 @@ public class Shibboleth extends Controller {
 	 * Redirect to the original user's email
 	 */
 	private static void redirectToOriginalURL() throws Throwable {
-		Security.invoke("onAuthenticated");
 		String url = flash.get("url");
 		if(url == null) 
 			url = request.params.get("return");
@@ -221,6 +237,16 @@ public class Shibboleth extends Controller {
 		}
 		
 		return attributeMap;
+	}
+	
+	/**
+	 * @return The list of attributes required for successful authentication.
+	 */
+	private static List<String> getRequiredAttributes() {
+		
+		String[] requiredAttributes = Play.configuration.getProperty("shib.require","").split(",");
+		
+		return Arrays.asList(requiredAttributes);
 	}
 
 }
