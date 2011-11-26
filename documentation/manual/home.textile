@@ -100,6 +100,9 @@ Other methods that can be customized are:
 * *onAttributeFailure()* - This hook is called when a user has failed to supply the minimum configuration of attributes.
 
 
+p(note). *Tip*
+ Shibboleth attributes may contain multiple values when this happens Shibboleth will encode all the attribute values seperated by a semicolon, and semicolons will be escaped with a @\@ character. You can use the static @Shibboleth.split(attribute)@ method to easily split the attribute into it's multiple components.
+
 h2. <a>Testing with Shibboleth</a>
 
 Using a fully functional Shibboleth implementation for testing is often times impractical. This module allows you to mock shibboleth attributes so that in a testing environment you do not need to setup a Shibbolized proxy webserver. First turn on the mock implementation with @shib = mock@ then provide a set of attributes to use when mocking Shibboleth: @shib.mock.<HTTP Header> = <Header Value>@. When any user attempts to login to your application with the Shibboleth mock turned on instead of using Shibboleth these attributes provided here will be assumed. 

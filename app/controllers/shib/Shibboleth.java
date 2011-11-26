@@ -146,6 +146,11 @@ public class Shibboleth extends Controller {
 				continue;
 			}
 
+			if (value.length() == 0) {
+				// Shibboleth will send blank attributes for values which do not exist.
+				continue;
+			}
+			
 			// Store on the session.
 			extractedAttributes.put(attribute, value);
 			Logger.debug("Shib: Recieved attribute, '" + attribute + "' = '"
@@ -183,25 +188,78 @@ public class Shibboleth extends Controller {
 				"false");
 		if (useLogout.equalsIgnoreCase("true")) {
 			// Determine where the Shibboleth logout initiator is
-			String shibLogout = Play.configuration.getProperty("shib.logout.url", null);
+			String shibLogout = Play.configuration.getProperty(
+					"shib.logout.url", null);
 			if (shibLogout == null)
 				shibLogout = request.getBase() + "/Shibboleth.sso/Logout";
 
-			String shibReturn = Play.configuration.getProperty("shib.logout.return", null);
+			String shibReturn = Play.configuration.getProperty(
+					"shib.logout.return", null);
 			if (shibReturn == null)
 				shibReturn = request.getBase() + "/";
 
 			// Append the target query string
 			shibLogout += "?return=" + shibReturn;
 
-			Logger.debug("Shib: Redirecting to Shibboleth logout initiator: " + shibLogout);
+			Logger.debug("Shib: Redirecting to Shibboleth logout initiator: "
+					+ shibLogout);
 		}
 
-		String shibReturn = Play.configuration.getProperty("shib.logout.return", null);
+		String shibReturn = Play.configuration.getProperty(
+				"shib.logout.return", null);
 		if (shibReturn == null)
 			shibReturn = request.getBase() + "/";
 
 		redirect(shibReturn);
+	}
+
+	/**
+	 * Split a multivalue shibboleth attribute into individual components.
+	 * Shibboleth attributes may contain multiple values separated by a
+	 * semicolon and semicolons are escaped with a backslash. This method will
+	 * split all the attributes into a list and unescape semicolons.
+	 * 
+	 * @param attribute
+	 *            A multivalue shibboleth attribute
+	 * @return A list of attribute values.
+	 */
+	public static List<String> split(String attribute) {
+		List<String> valueList = new ArrayList<String>();
+		int idx = 0;
+		do {
+			idx = attribute.indexOf(';', idx);
+
+			if (idx == 0) {
+				// if the string starts with a semicolon just remove it. This
+				// will
+				// prevent an endless loop in an error condition.
+				attribute = attribute.substring(1, attribute.length());
+				continue;
+			} 
+			if (idx > 0 && attribute.charAt(idx - 1) == '\\') {
+				idx++;
+				continue;
+			} 
+			if (idx > 0 ) {
+				// First extract the value and store it on the list.
+				String value = attribute.substring(0, idx);
+				value = value.replaceAll("\\\\;", ";");
+				valueList.add(value);
+
+				// Next, remove the value from the string and continue to scan.
+				attribute = attribute.substring(idx + 1, attribute.length());
+				idx = 0;
+			} 
+		} while (idx >= 0);
+
+		// The last attribute will still be left on the values string, put it
+		// into the list.
+		if (attribute.length() > 0) {
+			attribute = attribute.replaceAll("\\\\;", ";");
+			valueList.add(attribute);
+		}
+		
+		return valueList;
 	}
 
 	/**

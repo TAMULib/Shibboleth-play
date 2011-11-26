@@ -4,6 +4,7 @@ import java.util.List;
 import org.junit.*;
 
 import controllers.shib.MockShibboleth;
+import controllers.shib.Shibboleth;
 import play.Logger;
 import play.test.*;
 import play.mvc.*;
@@ -78,12 +79,14 @@ public class ApplicationTest extends FunctionalTest {
     	
     	MockShibboleth.removeAll();
     	MockShibboleth.set("SHIB_email","someone@your-domain.net");
+    	MockShibboleth.set("SHIB_givenName","bob");
     	
     	final String LOGIN_URL = Router.reverse("shib.Shibboleth.login").url;
         Response response = GET(LOGIN_URL,true);
         assertIsOk(response);
         assertContentType("text/html", response);
         assertContentMatch("<dt>email</dt>[\\s]*<dd>someone\\@your-domain\\.net</dd>", response);
+        assertContentMatch("<dt>firstName</dt>[\\s]*<dd>bob</dd>", response);
     	
     }
     
@@ -111,27 +114,125 @@ public class ApplicationTest extends FunctionalTest {
         assertContentMatch("<dt>lastName</dt>[\\s]*<dd>Smith</dd>", response);
     }
     
+    /** 
+     * Test handling of blank attributes. This is how the shibboleth SP will send
+     * attributes which do not exist. They should be recognized as not existing.
+     */
+    @Test
+    public void testBlankAttributes() {
+    	
+    	{
+    		// 1. All blank
+    		MockShibboleth.removeAll();
+    		MockShibboleth.set("SHIB_email","");
+    		MockShibboleth.set("SHIB_givenName", "");
+    		MockShibboleth.set("SHIB_sn", "");
+
+    		final String LOGIN_URL = Router.reverse("shib.Shibboleth.login").url;
+    		Response response = GET(LOGIN_URL,true);
+    		assertStatus(500, response);
+    	}
+
+
+    	{
+    		// 2. Minimum + blank attributes
+    		MockShibboleth.removeAll();
+    		MockShibboleth.set("SHIB_email","bob@gmail.com");
+    		MockShibboleth.set("SHIB_givenName", "Bob");
+    		MockShibboleth.set("SHIB_sn", "");
+
+    		final String LOGIN_URL = Router.reverse("shib.Shibboleth.login").url;
+    		Response response = GET(LOGIN_URL, true);
+    		assertIsOk(response);
+    		assertContentType("text/html", response);
+            assertContentMatch("<dt>email</dt>[\\s]*<dd>bob\\@gmail\\.com</dd>", response);
+            assertContentMatch("<dt>firstName</dt>[\\s]*<dd>Bob</dd>", response);
+            assertFalse(getContent(response).contains("<dt>lastName</dt>"));
+    	}
+    }
+   
     
     
+    /**
+     * Test the logout feature
+     */
+    @Test
     public void testLogout() {
     	
     	MockShibboleth.removeAll();
+    	
+    	final String INDEX_URL = Router.reverse("Application.index").url;
+        Response response = GET(INDEX_URL,true);
+        assertIsOk(response);
+        assertFalse(response.cookies.get("PLAY_SESSION").value.contains("someone%40your-domain.net"));
+    	
     	MockShibboleth.set("SHIB_email","someone@your-domain.net");
     	MockShibboleth.set("SHIB_givenName", "Some");
     	MockShibboleth.set("SHIB_sn", "One");
     	
     	final String LOGIN_URL = Router.reverse("shib.Shibboleth.login").url;
-        Response response = GET(LOGIN_URL,true);
+        response = GET(LOGIN_URL,true);
         assertIsOk(response);
-        assertTrue(response.cookies.get("PLAY_SESSION").value.contains("someone@your-domain.net"));
+        assertTrue(response.cookies.get("PLAY_SESSION").value.contains("someone%40your-domain.net"));
         
         final String LOGOUT_URL = Router.reverse("shib.Shibboleth.logout").url;
-        response = GET(LOGOUT_URL,true);
-        assertIsOk(response);
-		assertFalse(response.cookies.get("PLAY_SESSION").value.contains("someone@your-domain.net"));
+        response = GET(LOGOUT_URL);
+		assertFalse(response.cookies.get("PLAY_SESSION").value.contains("someone%40your-domain.net"));
     }
     
-    
+	/**
+	 * Test the multivalue attribute split method.
+	 */
+    @Test
+	public void testSplit() {
+
+		{
+			final String test = "SingleValue";
+			List<String> result = Shibboleth.split(test);
+			assertNotNull(result);
+			assertEquals(1, result.size());
+			assertEquals("SingleValue", result.get(0));
+		}
+
+		{
+			final String test = "One;Two;Three";
+			List<String> result = Shibboleth.split(test);
+			assertNotNull(result);
+			assertEquals(3, result.size());
+			assertEquals("One", result.get(0));
+			assertEquals("Two", result.get(1));
+			assertEquals("Three", result.get(2));
+		}
+		
+		{
+			final String test = "One\\;;Two;\\;Three";
+			List<String> result = Shibboleth.split(test);
+			assertNotNull(result);
+			assertEquals(3, result.size());
+			assertEquals("One;", result.get(0));
+			assertEquals("Two", result.get(1));
+			assertEquals(";Three", result.get(2));
+		}
+		
+		{
+			final String test = "One\\;;;Two;\\;Three";
+			List<String> result = Shibboleth.split(test);
+			assertNotNull(result);
+			assertEquals(3, result.size());
+			assertEquals("One;", result.get(0));
+			assertEquals("Two", result.get(1));
+			assertEquals(";Three", result.get(2));
+		}
+		
+		{
+			final String test = "One\\;\\;Two;";
+			List<String> result = Shibboleth.split(test);
+			assertNotNull(result);
+			assertEquals(1, result.size());
+			assertEquals("One;;Two", result.get(0));
+		}
+	}
+
     @AfterClass
     public static void cleanup() {
     	MockShibboleth.reload();
