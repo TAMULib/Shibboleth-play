@@ -1,10 +1,9 @@
 <html>
 	<head>
-        <title>Application error</title>
-        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">	
-    </head>
-    <body>
-                    
+		<title>Application error</title>
+		<meta content="text/html; charset=utf-8" http-equiv="Content-Type">	
+	</head>
+<body>
 <style type="text/css">
     html, body {
         margin: 0;
@@ -31,14 +30,16 @@
     	font-size: 90%;
     }
 </style>
-<div class="block" id="header">
-<h1>
-Opps, the Shibboleth proxy server is misconfigured
-</h1>
-</div>
-<div class="block" id="extra">
-<p> This url should not haven been proxied to the Play! application. Instead the Shibboleth Service Provider should have intercepted this URL and initiate a login or logout operation. </p>
-<p><a href="@{ Application.index() }">Back</a>
-</div>
+	<div class="block" id="header">
+		<h1>
+			Opps, the Shibboleth proxy server is misconfigured
+		</h1>
+	</div>
+	<div class="block" id="extra">
+		<p> This url should not haven been proxied to the Play! application. Instead the 
+		Shibboleth Service Provider should have intercepted this URL and initiate a login 
+		or logout operation. </p>
+		<p><a href="@{ Application.index() }">Back</a>
+	</div>
 </body>
 </html>

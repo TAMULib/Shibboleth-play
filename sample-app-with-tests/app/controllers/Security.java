@@ -9,12 +9,19 @@ import play.Logger;
 import play.Play;
 import play.utils.Java;
 
+/**
+ * 
+ * Application specific implementation of the Security class, this
+ * one just logs when each hook is called.
+ * 
+ * @author Scott Phillips, http://www.scottphillips/
+ */
 public class Security extends controllers.shib.Security {
 
 	/**
 	 * This method checks that a profile is allowed to view this page/method.
 	 * This method is called prior to the method's controller annotated with the
-	 * e method.
+	 * check method.
 	 * 
 	 * @param profile
 	 * @return true if you are allowed to execute this controller method.
@@ -38,27 +45,24 @@ public class Security extends controllers.shib.Security {
 	}
 
 	/**
-	 * This method is called after a successful authentication. You need to
-	 * override this method if you with to perform specific actions (eg. Record
-	 * the time the user signed in)
+	 * This method is called after a successful authentication. The user's
+	 * attributes will already be stored in the session object. Use this method
+	 * if you require complex attribute strategies or need to sync the data with
+	 * an external data source.
 	 */
 	static void onAuthenticated() {
 		Logger.debug("Security: Security.onAuthenticated()");
 	}
 
 	/**
-	 * This method is called before a user tries to sign off. You need to
-	 * override this method if you wish to perform specific actions (eg. Record
-	 * the name of the user who signed off)
+	 * This method is called before a user tries to sign off.
 	 */
 	static void onDisconnect() {
 		Logger.debug("Security: Security.onDisconnect()");
 	}
 
 	/**
-	 * This method is called after a successful sign off. You need to override
-	 * this method if you wish to perform specific actions (eg. Record the time
-	 * the user signed off)
+	 * This method is called after a successful sign off.
 	 */
 	static void onDisconnected() {
 		Logger.debug("Security: Security.onDisconnected()");
@@ -76,9 +80,11 @@ public class Security extends controllers.shib.Security {
 	}
 	
 	/**
-	 * When an error is encountered extracting shibboleth attributes. 
+	 * This method is called when their is a failure to extract/map attributes,
+	 * such as missing required attributes.
 	 * 
-	 * @param attributes Map of attributes found
+	 * @param attributes
+	 *            Map of attributes found, may be null.
 	 */
 	static void onAttributeFailure(HashMap<String,String> attributes) {
 		Logger.debug("Security: Security.onAttributeFailure("+attributes+")");
