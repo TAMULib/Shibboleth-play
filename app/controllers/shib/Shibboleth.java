@@ -79,7 +79,7 @@ public class Shibboleth extends Controller {
 
 		// Append the target query string
 		shibLogin += "?target=" + request.getBase();
-		shibLogin += Router.reverse("Shibboleth.authenticate").url;
+		shibLogin += Router.reverse("shib.Shibboleth.authenticate").url;
 
 		// Since we are redirecting we can't actually set the flash, so we'll
 		// embed it in the target url.
