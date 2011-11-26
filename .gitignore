@@ -6,3 +6,4 @@ tmp
 test-result
 *.pyc
 *.class
+logs
