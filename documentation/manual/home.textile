@@ -23,7 +23,7 @@ bc.
   #Import Shibboleth routes
   *      /                module:shibboleth
 
-h2. <a>Configure Shibboleth authentication</a>
+h2. <a>Configure Shibboleth authentication in Play</a>
 
 Shibboleth requires some configuration before it can be used at a practical minimum you must provide some @shib.attribute.<Attribute Name> = <HTTP Header>@ attribute mappings. These map the Shibboleth attributes to session attributes that will be available to your application. You can use the @shib.require@ parameter to indicate which of these attributes are required for successful authentication. You can also override the @onAuthenticated()@ hook described below to implement more complex attribute mapping strategies.
 
@@ -37,22 +37,60 @@ bc.
   ...
   shib.attribute.<Attribute Name> = <HTTP Header>
 
-Beyond the attributes you may also configure the specific initiators configured for starting the login / logout process. The values used below are the default initiators. You may use fully qualified urls (i.e. @http://@) or absolute urls (just @/@). However if you want the Shibboleth transaction to occur over SSL it's best to set the protocol to https://. There is debate about whether it is positive to even provide a logout function for Shibbilized applications, because users may not necessarily be logged out of any other applications that they may have previously logged in. By default the module disables the logout feature, however you may enable it by specifying @shib.logout = true@
+Beyond the attributes you may also configure the specific initiators configured for starting the login / logout process. The values used below are the default initiators. You may use fully qualified urls (i.e. @http://@) or absolute urls (just @/@). However if you want the Shibboleth transaction to occur over SSL it's best to set the protocol to @https://@. The return parameters (@shib.login.return@ and @shib.logout.return@)are where the user will be sent after successfully completing the action. In the case of loginig in, the user will be returned to the URL they were attempting to access (i.e. a controller using the @\@With@ annotation). If there was inturrupted url then the user will be sent to the default return url defined in @shib.login.return@.
+
+There is a "debate":https://wiki.brown.edu/confluence/display/CISDOC/Shibboleth+and+Application+Logout+Best+Practices about whether it is positive to even provide a logout function for Shibbilized applications, because users may not necessarily be logged out of any other applications that they may have previously logged in. By default the module disables the logout feature, however you may enable it by specifying @shib.logout = true@
 
 bc. 
-  # The Shibboleth login initiator
+  # Shibboleth login initiator
   shib.login.url = https://localhost/Shibboleth.sso/Login
+  shib.login.return = http://localhost/
   
-  # Enable logout for shibboleth (default false)
+  # Shibboleth logout initiator (default false)
   shib.logout = true
   shib.logout.url = https://localhost/Shibboleth.sso/Logout
-  shib.logout.return = https://localhost/
+  shib.logout.return = http://localhost/
+
+h2. <a>Configure Apache/Lighttpd</a>
+
+*Apache set-up*
+
+Configure Apache's virtual host or other directive to use shibboleth. The configuration provided below assumes lazy authentication, i.e. users will be able to access your application without authenticating. If you want only authenticated users accessing the application then set @ShibRequireSessions On@. When defining the proxy parameters it is highly advantageous to also use @ProxyPreserveHost on@ so that your Play application knows what external host the application is being accessed from.
+
+bc. 
+  AuthType shibboleth
+  ShibURLScheme https
+  ShibRequireSessions Off
+  ShibUseHeaders On
+  Require shibboleth
+
+*Lighttpd set-up*
+
+The module developers have not tested this configuration, but it should work. If you use lighttpd in your configuration let us know.
+
+bc. 
+  server.name = "your_server_name"
+  
+  server.document-root = "/servers/tags/www/"
+  
+  fastcgi.server  = (
+      "/Shibboleth.sso" => (("socket" => "/tmp/fcgi-resp.sock", 
+            "bin-path" => "/servers/sapo-sp/lib/shibboleth/shibresponder", 
+            "check-local" => "disable", 
+            "mode" => "responder")),
+      "/"   => (("socket" => "/tmp/fcgi-auth.sock", 
+            "bin-path" => "/servers/sapo-sp/lib/shibboleth/shibauthorizer", 
+            "check-local" => "disable", 
+            "mode" => "authorizer"))
+  )
+  
 
 h2. <a>Using Shibboleth in your application</a>
 
 The Shibboleth module works in a very similar manner to the default @Security@ module. To protect a controller requiring authentication use the @\@With@ annotation. For example:
 
-bc. @With(Security.class)
+bc. 
+  @With(Security.class)
   public class Application extends Controller {
   
       public static void index() {
