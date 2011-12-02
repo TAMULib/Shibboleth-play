@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +48,7 @@ public class Shibboleth extends Controller {
 		// Redirect to login
 		if (!session.contains("shibboleth")) {
 			flash.put("url", "GET".equals(request.method) ? request.url : null);
+			Logger.debug("Shib: User requires authentication to access: "+request.url);
 			login();
 		}
 
@@ -78,7 +80,7 @@ public class Shibboleth extends Controller {
 			shibLogin = Router.reverse("shib.Shibboleth.authenticate").url;
 
 		// Append the target query string
-		shibLogin += "?target=" + request.getBase();
+		shibLogin += "?target=" + Play.configuration.getProperty("application.baseUrl",request.getBase());
 		shibLogin += Router.reverse("shib.Shibboleth.authenticate").url;
 
 		// Since we are redirecting we can't actually set the flash, so we'll
@@ -100,15 +102,15 @@ public class Shibboleth extends Controller {
 	 */
 	public static void authenticate() throws Throwable {
 
-		// 1. Log all headers received, if debugging
-		if (Logger.isDebugEnabled()) {
+		// 1. Log all headers received, if tracing (it fills up the logs fast!)
+		if (Logger.isTraceEnabled()) {
 			String log = "Shib: Recieved the following headers: \n";
 			for (String name : request.headers.keySet()) {
 				for (String value : request.headers.get(name).values) {
 					log += "    '" + name + "' = '" + value + "'\n";
 				}
 			}
-			Logger.debug(log);
+			Logger.trace(log);
 		}
 
 		// 2. Map each header to a session attribute
@@ -153,13 +155,13 @@ public class Shibboleth extends Controller {
 			
 			// Store on the session.
 			extractedAttributes.put(attribute, value);
-			Logger.debug("Shib: Recieved attribute, '" + attribute + "' = '"
-					+ value + "'");
+			Logger.debug("Shib: Recieved attribute, '" + attribute + "' = '"+ value + "'");
 		}
 
 		// 3. Check for the required attributes
 		for (String required : getRequiredAttributes()) {
 			if (!extractedAttributes.containsKey(required)) {
+				Logger.warn("Shib: Missing required attribute, '"+required+"'");
 				Security.invoke("onAttributeFailure", extractedAttributes);
 			}
 		}
@@ -169,6 +171,7 @@ public class Shibboleth extends Controller {
 		for (String attribute : extractedAttributes.keySet()) {
 			session.put(attribute, extractedAttributes.get(attribute));
 		}
+		Logger.debug("Shib: User has succesfully authenticated with Shibboleth.");
 		Security.invoke("onAuthenticated");
 
 		// 5. Redirect to the original URL
@@ -180,10 +183,20 @@ public class Shibboleth extends Controller {
 	 * Shibboleth Logout.
 	 */
 	public static void logout() throws Throwable {
+		
+		// 1. Clear out the session
 		Security.invoke("onDisconnect");
 		session.clear();
 		Security.invoke("onDisconnected");
+		Logger.debug("Shib: User has succesfully logged out using Shibboleth.");
 
+		// 2. Determine where the user should go next.
+		String shibReturn = Play.configuration.getProperty("shib.logout.return", null);
+		if (shibReturn == null)
+			shibReturn = Play.configuration.getProperty("application.baseUrl",request.getBase()) + "/";
+		
+		
+		// 3. Tell shibboleth the user has logged out.
 		String useLogout = Play.configuration.getProperty("shib.logout",
 				"false");
 		if (useLogout.equalsIgnoreCase("true")) {
@@ -193,22 +206,12 @@ public class Shibboleth extends Controller {
 			if (shibLogout == null)
 				shibLogout = request.getBase() + "/Shibboleth.sso/Logout";
 
-			String shibReturn = Play.configuration.getProperty(
-					"shib.logout.return", null);
-			if (shibReturn == null)
-				shibReturn = request.getBase() + "/";
-
 			// Append the target query string
 			shibLogout += "?return=" + shibReturn;
 
-			Logger.debug("Shib: Redirecting to Shibboleth logout initiator: "
-					+ shibLogout);
+			Logger.debug("Shib: Redirecting to Shibboleth logout initiator: " + shibLogout);
+			redirect(shibLogout);
 		}
-
-		String shibReturn = Play.configuration.getProperty(
-				"shib.logout.return", null);
-		if (shibReturn == null)
-			shibReturn = request.getBase() + "/";
 
 		redirect(shibReturn);
 	}
@@ -282,8 +285,10 @@ public class Shibboleth extends Controller {
 		if (url == null)
 			url = request.params.get("return");
 		if (url == null)
-			url = "/";
+			url = Play.configuration.getProperty("shib.login.return","/");
 
+
+		Logger.debug("Shib: Redirecting user back to destination location: "+url);
 		redirect(url);
 	}
 
@@ -316,9 +321,18 @@ public class Shibboleth extends Controller {
 	 */
 	private static List<String> getRequiredAttributes() {
 
-		String[] requiredAttributes = Play.configuration.getProperty(
-				"shib.require", "").split(",");
-
+		
+		String shibRequired = Play.configuration.getProperty("shib.require", null);
+		
+		if (shibRequired == null)
+			return Collections.EMPTY_LIST;
+		
+		String[] requiredAttributes = shibRequired.split(",");
+		
+		for (int i = 0; i < requiredAttributes.length; i++) {
+			requiredAttributes[i] = requiredAttributes[i].trim();
+		}
+		
 		return Arrays.asList(requiredAttributes);
 	}
 
