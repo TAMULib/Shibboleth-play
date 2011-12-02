@@ -7,3 +7,4 @@ test-result
 *.pyc
 *.class
 logs
+server.pid
