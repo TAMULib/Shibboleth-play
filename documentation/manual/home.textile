@@ -90,7 +90,7 @@ h2. <a>Using Shibboleth in your application</a>
 The Shibboleth module works in a very similar manner to the default @Security@ module. To protect a controller requiring authentication use the @\@With@ annotation. For example:
 
 bc. 
-  @With(Security.class)
+  @With(Shibboleth.class)
   public class Application extends Controller {
   
       public static void index() {
@@ -101,7 +101,7 @@ bc.
 In addition to using the @controller.shib.Secure@ for restricting access to particular controllers you can also use it to customize how Shibboleth interacts with your application. Create a controller that extends the Shibboleth Secure class. When you do this you can add specific customization checks, for example:
 
 bc. 
-  @With(Security.class)
+  @With(Shibboleth.class)
   public class Application extends Controller {
       ...
       
