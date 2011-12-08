@@ -57,10 +57,12 @@ public class Shibboleth extends Controller {
 		if (check == null)
 			check = getControllerInheritedAnnotation(Check.class);
 
-		for (String profile : check.value()) {
-			boolean hasProfile = (Boolean) Security.invoke("check", profile);
-			if (!hasProfile) {
-				Security.invoke("onCheckFailed", profile);
+		if (check != null) {
+			for (String profile : check.value()) {
+				boolean hasProfile = (Boolean) Security.invoke("check", profile);
+				if (!hasProfile) {
+					Security.invoke("onCheckFailed", profile);
+				}
 			}
 		}
 
