@@ -44,12 +44,15 @@ public class Shibboleth extends Controller {
 	 */
 	@Before(unless = { "login", "authenticate", "logout" })
 	static void checkAccess() throws Throwable {
-
-		// Redirect to login
-		if (!session.contains("shibboleth")) {
-			flash.put("url", "GET".equals(request.method) ? request.url : null);
-			Logger.debug("Shib: User requires authentication to access: "+request.url);
-			login();
+		String shibLoginActivated = Play.configuration.getProperty("shib.login",
+				"true");
+		if(Boolean.parseBoolean(shibLoginActivated)){
+			// Redirect to login
+			if (!session.contains("shibboleth")) {
+				flash.put("url", "GET".equals(request.method) ? request.url : null);
+				Logger.debug("Shib: User requires authentication to access: "+request.url);
+				login();
+			}
 		}
 
 		// Check authentication profiles
