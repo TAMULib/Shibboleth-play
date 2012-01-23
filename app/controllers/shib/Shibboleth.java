@@ -45,7 +45,7 @@ public class Shibboleth extends Controller {
 	@Before(unless = { "login", "authenticate", "logout" })
 	static void checkAccess() throws Throwable {
 		String shibLoginActivated = Play.configuration.getProperty("shib.login",
-				"true");
+				"false");
 		if (!session.contains("shibboleth")) {
 			flash.put("url", "GET".equals(request.method) ? request.url : null);
 			if(Boolean.parseBoolean(shibLoginActivated)){
