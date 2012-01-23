@@ -36,6 +36,34 @@ public class ApplicationTest extends FunctionalTest {
         
     }
     
+    
+    /**
+	 * Test the shibboleth.check tag
+	 */
+    @Test
+    public void testShibbolethCheckTag() {
+    	
+    	// Check that the protected template text is not viewable when unauthenticated
+    	MockShibboleth.removeAll();
+    	final String INDEX_URL = Router.reverse("Application.index").url;
+    	Response response = GET(INDEX_URL);
+    	assertIsOk(response);
+    	assertFalse(getContent(response).contains("This text is only be viewable by authenticated users as it is restricted within the template"));
+    	
+    	// Now Login and check that it is visible.
+    	MockShibboleth.removeAll();
+    	MockShibboleth.set("SHIB_email","someone@your-domain.net");
+    	MockShibboleth.set("SHIB_givenName", "Some");
+    	MockShibboleth.set("SHIB_sn", "One");
+    	
+    	final String LOGIN_URL = Router.reverse("shib.Shibboleth.login").url;
+        response = GET(LOGIN_URL,true);
+        assertIsOk(response);
+        assertContentType("text/html", response);
+        assertContentMatch("This text is only be viewable by authenticated users as it is restricted within the template", response);
+        
+    }
+    
     /** 
      * Test that visiting a restricted controller forces us to login, and then
      * we are redirected back to that controller after authenticating

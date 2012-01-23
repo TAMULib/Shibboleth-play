@@ -29,6 +29,10 @@
 </p>
 #{/else}
 
+#{shibboleth.check 'administrator'}
+<p>This text is only be viewable by authenticated users as it is restricted within the template using a <code>&#35;&#123;shibboleth.check 'administrator'&#125;</code> tag.</p>
+#{/shibboleth.check}
+
 <h2>Session Attributes</h2>
 #{if session?.all()?.keySet()?.size() > 0}
 	<dl class="shib-list">
