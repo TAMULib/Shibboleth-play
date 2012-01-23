@@ -1,4 +1,4 @@
-self: play -> Shibboleth head 
+self: play -> shibboleth head 
 
 require:
     - play
