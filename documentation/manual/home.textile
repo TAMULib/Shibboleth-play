@@ -31,8 +31,8 @@ bc.
   # Shibboleth attributes
   shib.require = email, firstName, lastName
   
-  shib.attribute.email = SHIB-email
-  shib.attribute.firstName = SHIB-givenName
+  shib.attribute.email = SHIB_email
+  shib.attribute.firstName = SHIB_givenName
   shib.attribute.lastName = SHIB_sn
   ...
   shib.attribute.<Attribute Name> = <HTTP Header>
