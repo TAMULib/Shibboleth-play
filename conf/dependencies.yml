@@ -1,4 +1,4 @@
-self: play -> shibboleth 1.2 
+self: play -> shibboleth 1.2  
 
 require:
     - play
