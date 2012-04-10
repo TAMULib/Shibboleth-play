@@ -1,7 +1,10 @@
-logs
-project/project
-project/target
-target
-tmp
+project-code/logs
+project-code/project/project
+project-code/project/target
+project-code/target
+project-code/tmp
+project-code/dist
 .history
-dist
+.classpath
+.project
+.settings
