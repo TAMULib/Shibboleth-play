@@ -1,12 +1,7 @@
-.classpath
-.project
-.settings
-eclipse
-tmp
-test-result
-*.pyc
-*.class
 logs
-server.pid
+project/project
+project/target
+target
+tmp
+.history
 dist
-lib
