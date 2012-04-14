@@ -14,6 +14,7 @@ import play.Logger;
 import play.Play;
 
 import play.modules.shib.DefaultShibbolethHandler;
+import play.modules.shib.MockShibboleth;
 import play.modules.shib.ShibbolethHandler;
 import play.mvc.Controller;
 import play.mvc.Result;

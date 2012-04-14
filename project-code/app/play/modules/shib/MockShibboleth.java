@@ -1,4 +1,4 @@
-package controllers;
+package play.modules.shib;
 
 import java.util.HashMap;
 import java.util.Map;
