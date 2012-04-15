@@ -4,7 +4,7 @@ import PlayProject._
 
 object ApplicationBuild extends Build {
 
-    val appName         = "shibboleth-play"
+    val appName         = "shibboleth"
     val appVersion      = "1.0-SNAPSHOT"
 
     val appDependencies = Seq(
@@ -12,7 +12,7 @@ object ApplicationBuild extends Build {
     )
 
     val main = PlayProject(appName, appVersion, appDependencies, mainLang = JAVA).settings(
-      // Add your own project settings here      
+      organization := "play"   
     )
 
 }

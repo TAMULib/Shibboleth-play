@@ -9,7 +9,7 @@ public interface ShibbolethHandler {
 	
 	public Result beforeLogin(Http.Context context);
 	
-	public Map<String,String> getShibbolethAttributes(Http.Context context, Map<String,String[]> headers);
+	public Map<String,String> getShibbolethAttributes(Map<String,String[]> headers);
 	
 	public Result verifyShibbolethAttributes(Http.Context context, Map<String,String> shibbolethAttributes);
 		

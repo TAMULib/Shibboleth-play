@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import play.Logger;
 import play.Play;
 
 
@@ -100,6 +101,10 @@ public class MockShibboleth {
 				String name = key.substring("shib.mock.".length());
 				String[] values = {Play.application().configuration().getString(key)};
 				mockHeaders.put(name, values);
+				
+				
+				//DELETEME
+				Logger.debug("reloading: "+name+" = "+values[0]);
 			}
 		}
 

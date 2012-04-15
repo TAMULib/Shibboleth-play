@@ -25,7 +25,7 @@ public class AbstractShibbolethHandler extends Results implements ShibbolethHand
 
 	
 	@Override
-	public Map<String, String> getShibbolethAttributes(Context context, Map<String, String[]> headers) {
+	public Map<String, String> getShibbolethAttributes(Map<String, String[]> headers) {
 		Map<String, String> attributeMapping = getAttributeMapping();
 		Map<String, String> shibbolethAttributes = new HashMap<String,String>();
 		for (String attributeName : attributeMapping.keySet()) {
@@ -33,9 +33,10 @@ public class AbstractShibbolethHandler extends Results implements ShibbolethHand
 			String headerName = attributeMapping.get(attributeName);
 			String[] headerValues = headers.get(headerName);
 			if (headerValues == null || headerValues.length == 0) {
+				Logger.trace("Shib: Did not recieve header '"+headerName+"', skipping.");
 				continue;
 			} 
-			if (headerValues.length > 0)
+			if (headerValues.length > 1)
 				Logger.warn("Shib: Recieved multiple '"+headerName+"' headers for attribute '"+attributeName+"', picking the first one.");
 				
 			String headerValue = headerValues[0];
@@ -61,6 +62,7 @@ public class AbstractShibbolethHandler extends Results implements ShibbolethHand
 		if (!foundAllRequiredAttributes)
 			return badRequest("Shibboleth authentication failed because the required security attributes were not found.");
 
+		Logger.debug("Shib: All required attributes present.");
 		return null;
 	}
 
@@ -120,7 +122,7 @@ public class AbstractShibbolethHandler extends Results implements ShibbolethHand
 	protected synchronized List<String> getRequiredAttributes() {
 
 		if (this.requiredAttributes == null) {
-			String requiredAttributesString = Play.application().configuration().getString("shib.require.");
+			String requiredAttributesString = Play.application().configuration().getString("shib.require");
 			
 			if (requiredAttributesString == null)
 				return Collections.EMPTY_LIST;

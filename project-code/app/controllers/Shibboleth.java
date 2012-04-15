@@ -34,7 +34,7 @@ public class Shibboleth extends Controller{
 			return result;
 		
 		// 2. If shibboleth login is turned off skip straight to authentication
-		Boolean login = Play.application().configuration().getBoolean("shib.login");
+		Boolean login = Play.application().configuration().getBoolean("shib.login.enable");
 		if (login == null || login == false)
 			return authenticate();
 		
@@ -47,7 +47,6 @@ public class Shibboleth extends Controller{
 			// We are mocking the shibboleth login initiator, in this case we
 			// just send them directly to the authenticate action, with the
 			// return url.
-			
 			shibLoginUrl = authenticationURL;
 			
 			// Save the url redirect
@@ -91,7 +90,7 @@ public class Shibboleth extends Controller{
 		Map<String,String[]> headers = request().headers();
 		if (isMock())
 			headers = MockShibboleth.getHeaders();
-		Map<String,String> shibbolethAttributes = handler.getShibbolethAttributes(ctx(),headers);
+		Map<String,String> shibbolethAttributes = handler.getShibbolethAttributes(headers);
 		
 		// 3. Check for required attributes.
 		Result result = handler.verifyShibbolethAttributes(ctx(), shibbolethAttributes);
@@ -150,7 +149,7 @@ public class Shibboleth extends Controller{
 			return result;
 		
 		// 4. Either logout using shibboleth or redirect to somewhere usefull.
-		Boolean logout = Play.application().configuration().getBoolean("shib.logout");
+		Boolean logout = Play.application().configuration().getBoolean("shib.logout.enable");
 		String shibLogoutReturn = Play.application().configuration().getString("shib.logout.return");
 		if (shibLogoutReturn == null)
 			shibLogoutReturn = "/";
@@ -191,7 +190,7 @@ public class Shibboleth extends Controller{
 	 */
 	public static boolean isMock() {
 		if (Play.isDev() || Play.isTest())
-			if ("mock".equalsIgnoreCase(Play.application().configuration().getString("shib")))
+			if ("mock".equalsIgnoreCase(Play.application().configuration().getString("shib.mode")))
 				return true;
 		return false;
 	}
