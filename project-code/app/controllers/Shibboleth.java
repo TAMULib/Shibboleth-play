@@ -28,14 +28,20 @@ public class Shibboleth extends Controller{
 	public static Result login() throws UnsupportedEncodingException {
 		ShibbolethHandler handler = getHandler();
 		
+		// 1. Pre-login hook
 		Result result = handler.beforeLogin(ctx());
-		
 		if (result != null)
 			return result;
 		
+		// 2. If shibboleth login is turned off skip straight to authentication
+		Boolean login = Play.application().configuration().getBoolean("shib.login");
+		if (login == null || login == false)
+			return authenticate();
+		
+		
+		// 3. Determine the shibboleth login initiation url
 		String authenticationURL = controllers.routes.Shibboleth.authenticate().absoluteURL(request());
 		String returnURL = flash("url");
-		
 		String shibLoginUrl;
 		if (isMock()) {
 			// We are mocking the shibboleth login initiator, in this case we
@@ -58,6 +64,7 @@ public class Shibboleth extends Controller{
 				shibLoginUrl += URLEncoder.encode("?return="+returnURL,"UTF-8");
 		}
 		
+		// 4. Forward the user off to the initiator
 		Logger.debug("Shib: Redirecting to Shibboleth login initiator: "+shibLoginUrl);
 		return temporaryRedirect(shibLoginUrl);
 	}
@@ -68,9 +75,6 @@ public class Shibboleth extends Controller{
 	public static Result authenticate() {
 		
 		ShibbolethHandler handler = getHandler();
-		Result result = handler.beforeAuthentication(ctx());
-		if (result != null)
-			return result;
 		
 		// 1. Log all headers received, if tracing (it fills up the logs fast!)
 		if (Logger.isTraceEnabled()) {
@@ -87,10 +91,10 @@ public class Shibboleth extends Controller{
 		Map<String,String[]> headers = request().headers();
 		if (isMock())
 			headers = MockShibboleth.getHeaders();
-		Map<String,String> shibbolethAttributes = handler.getShibbolethAttributes(headers);
+		Map<String,String> shibbolethAttributes = handler.getShibbolethAttributes(ctx(),headers);
 		
 		// 3. Check for required attributes.
-		result = handler.verifyShibbolethAttributes(ctx(), shibbolethAttributes);
+		Result result = handler.verifyShibbolethAttributes(ctx(), shibbolethAttributes);
 		if (result != null)
 			return result;
 		
@@ -100,16 +104,71 @@ public class Shibboleth extends Controller{
 			session().put(attributeName, shibbolethAttributes.get(attributeName));
 		}
 
-		// 5. Redirect the user back to where they should come from.
-		result = handler.afterAuthentication(ctx());
+		// 5. Post-authentication hook
+		result = handler.afterLogin(ctx());
 		if (result != null)
 			return result;
 		
-		return temporaryRedirect("/");
+		// 6. Determine where the user should be redirected.
+		String url = flash().get("url");
+		if (url == null) {
+			String[] urls = request().queryString().get("return"); 
+			if (urls != null && urls.length > 0)
+				url = urls[0];
+		} 
+		if (url == null) {
+			url = Play.application().configuration().getString("shib.login.return");
+		}
+		if (url == null) {
+			url = "/";
+		}
+		
+		// 7. Redirect the user back to the application.
+		Logger.debug("Shib: Redirecting user back to destination location: "+url);
+		return temporaryRedirect(url);	
 	}
 	
-	public static Result logout() {
-		return null;
+	
+	/**
+	 * Logout of a shibboleth session.
+	 */
+	public static Result logout() throws UnsupportedEncodingException {
+		
+		ShibbolethHandler handler = getHandler();
+		
+		// 1. First allow any pre-logout hoosk to run
+		Result result = handler.beforeLogout(ctx());
+		if (result != null)
+			return result;
+		
+		// 2. Actually preform the logout
+		session().clear();	
+		
+		// 3. Allow any post-logout hooks to run.
+		result = handler.afterLogout(ctx());
+		if (result != null)
+			return result;
+		
+		// 4. Either logout using shibboleth or redirect to somewhere usefull.
+		Boolean logout = Play.application().configuration().getBoolean("shib.logout");
+		String shibLogoutReturn = Play.application().configuration().getString("shib.logout.return");
+		if (shibLogoutReturn == null)
+			shibLogoutReturn = "/";
+		
+		if (logout != null && logout == true) {
+			// Logout using shibboleth.
+			String shibLogoutUrl = Play.application().configuration().getString("shib.logout.url");
+			if (shibLogoutUrl == null)
+				shibLogoutUrl = "/Shibboleth.sso/Logout";
+			
+			shibLogoutUrl += "?return="+URLEncoder.encode(shibLogoutReturn,"UTF-8");
+			
+			Logger.debug("Shib: Redirecting to Shibboleth logout initiator: "+shibLogoutUrl);
+			return temporaryRedirect(shibLogoutUrl);
+		} else {
+			// Just clear the session and move on.
+			return temporaryRedirect(shibLogoutReturn);
+		}
 	}
 	
 	

@@ -23,14 +23,9 @@ public class AbstractShibbolethHandler extends Results implements ShibbolethHand
 		return null;
 	}
 
-	@Override
-	public Result beforeAuthentication(Context context) {
-		return null;
-	}
-
 	
 	@Override
-	public Map<String, String> getShibbolethAttributes(Map<String, String[]> headers) {
+	public Map<String, String> getShibbolethAttributes(Context context, Map<String, String[]> headers) {
 		Map<String, String> attributeMapping = getAttributeMapping();
 		Map<String, String> shibbolethAttributes = new HashMap<String,String>();
 		for (String attributeName : attributeMapping.keySet()) {
@@ -71,31 +66,8 @@ public class AbstractShibbolethHandler extends Results implements ShibbolethHand
 
 
 	@Override
-	public Result afterAuthentication(Context context) {
-		
-		// 1) Check the flash object to see where we should return the user after logining.
-		String url = context.flash().get("url");
-		
-		// 2) Check the HTTP paramaters to see if one was passed along.
-		if (url == null) {
-			String[] urls = context.request().queryString().get("return"); 
-			if (urls != null && urls.length > 0)
-				url = urls[0];
-		} 
-		
-		// 3) Check the configured return url
-		if (url == null) {
-			url = Play.application().configuration().getString("shib.login.return");
-		}
-		
-		// 4) Finally, just drop them at the root.
-		if (url == null) {
-			url = "/";
-		}
-
-		Logger.debug("Shib: Redirecting user back to destination location: "+url);
-		
-		return redirect(url);	
+	public Result afterLogin(Context context) {
+		return null;
 	}
 
 	@Override
@@ -108,6 +80,8 @@ public class AbstractShibbolethHandler extends Results implements ShibbolethHand
 		return null;
 	}
 
+	
+	
 	
 	
 	
