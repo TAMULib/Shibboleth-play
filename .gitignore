@@ -4,6 +4,12 @@ project-code/project/target
 project-code/target
 project-code/tmp
 project-code/dist
+examples/*/logs
+examples/*/project/project
+examples/*/project/target
+examples/*/target
+examples/*/tmp
+examples/*/dist
 .history
 .classpath
 .project
